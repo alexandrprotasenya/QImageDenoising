@@ -10,11 +10,37 @@
 #include <iostream>
 #include <algorithm>
 
-void nlm_increse_image(QImage*, QImage*, QSize, int);
-
 #define MTHREADING
 
-#define H 10.0
+void nlm_increse_image(QImage*, QImage*, QSize, int);
+double** make_kernel(int);
+
+class FilterParam {
+private:
+    QSize m_imageSize;
+    int m_windowSize;
+    int m_patchSize;
+    double m_sigma;
+public:
+    FilterParam(QSize size, int windowSize, int patchSize, double sigma) {
+        m_imageSize = size;
+        m_windowSize = windowSize;
+        m_patchSize = patchSize;
+        m_sigma = sigma;
+    }
+    QSize getImageSize() const {
+        return m_imageSize;
+    }
+    int getWindowSize() const {
+        return m_windowSize;
+    }
+    int getPatchSize() const {
+        return m_patchSize;
+    }
+    double getSigma() const {
+        return m_sigma;
+    }
+};
 
 void createColorArrays(double** red, double** green, double** blue, QImage* image, int w, int h) {
     for (int i = 0; i < w; i++) {
@@ -55,13 +81,13 @@ int comp1 (const double *i, const double *j) {
     return *i - *j;
 }
 
-void processColorArray(double** colorInput, double** colorOutput, QSize size, int d, int ld) {
-    int w = size.width();
-    int h = size.height();
-    int patchSize = d;
-    int patchSizeQ = ld;
+void processColorArray(double** colorInput, double** colorOutput, FilterParam filterParam) {
+    int w = filterParam.getImageSize().width();
+    int h = filterParam.getImageSize().height();
+    int patchSize = filterParam.getWindowSize();
+    int patchSizeQ = filterParam.getPatchSize();
 
-    double H2 = H*H;
+    double H2 = filterParam.getSigma() * filterParam.getSigma();
 
     int t = patchSize/2;
     int f = patchSizeQ/2;
@@ -69,36 +95,7 @@ void processColorArray(double** colorInput, double** colorOutput, QSize size, in
     int m = w - patchSize;
     int n = h - patchSize;
 
-    double** kernel = new double*[patchSizeQ];
-    for (int i = 0; i < patchSizeQ; i++) {
-        kernel[i] = new double[patchSizeQ];
-        for (int j = 0; j < patchSizeQ; j++) {
-            kernel[i][j] = 0;
-        }
-    }
-
-    for (int k = 0; k < f; k++) {
-        double value = 1. / ((2*k+1)*(2*k+1));
-        for (int i = 0; i < patchSizeQ; i++) {
-            for (int j = 0; j < patchSizeQ; j++) {
-                kernel[i][j] += value;
-            }
-        }
-    }
-
-    double ks = 0;
-    for (int i = 0; i < patchSizeQ; i++) {
-        for (int j = 0; j < patchSizeQ; j++) {
-            kernel[i][j] /= f;
-            ks += kernel[i][j];
-        }
-    }
-
-    for (int i = 0; i < patchSizeQ; i++) {
-        for (int j = 0; j < patchSizeQ; j++) {
-            kernel[i][j] /= ks;
-        }
-    }
+    double** kernel = make_kernel(f);
 
     double** W1 = new double*[patchSizeQ];
     double** W2 = new double*[patchSizeQ];
@@ -177,7 +174,7 @@ void processColorArray(double** colorInput, double** colorOutput, QSize size, in
     delete W2;
 }
 
-QImage* nlm_filter(QImage* image, QSize size, int d, int ld) {
+QImage* nlm_filter(QImage* image, QSize size, int d, int ld, double sigma) {
     int pW = size.width()+d-1;
     int pH = size.height()+d-1;
 
@@ -199,16 +196,31 @@ QImage* nlm_filter(QImage* image, QSize size, int d, int ld) {
     createColorArrays(redArrayOutput, greenArrayOutput, blueArrayOutput, tmpImage1, pW, pH);
 
 #ifdef MTHREADING
-    QFuture<void> prRed = QtConcurrent::run(processColorArray, redArray, redArrayOutput, QSize(pW, pH), d, ld);
-    QFuture<void> prGreen = QtConcurrent::run(processColorArray, greenArray, greenArrayOutput, QSize(pW, pH), d, ld);
-    QFuture<void> prBlue = QtConcurrent::run(processColorArray, blueArray, blueArrayOutput, QSize(pW, pH), d, ld);
+    QFuture<void> prRed = QtConcurrent::run(
+                processColorArray,
+                redArray,
+                redArrayOutput,
+                FilterParam(QSize(pW, pH), d, ld, sigma)
+                );
+    QFuture<void> prGreen = QtConcurrent::run(
+                processColorArray,
+                greenArray,
+                greenArrayOutput,
+                FilterParam(QSize(pW, pH), d, ld, sigma)
+                );
+    QFuture<void> prBlue = QtConcurrent::run(
+                processColorArray,
+                blueArray,
+                blueArrayOutput,
+                FilterParam(QSize(pW, pH), d, ld, sigma)
+                );
     prRed.waitForFinished();
     prGreen.waitForFinished();
     prBlue.waitForFinished();
 #else
-    processColorArray(redArray, redArrayOutput, QSize(pW, pH), d, ld);
-    processColorArray(greenArray, greenArrayOutput, QSize(pW, pH), d, ld);
-    processColorArray(blueArray, blueArrayOutput, QSize(pW, pH), d, ld);
+    processColorArray(redArray, redArrayOutput, FilterParam(QSize(pW, pH), d, ld, sigma));
+    processColorArray(greenArray, greenArrayOutput, FilterParam(QSize(pW, pH), d, ld, sigma));
+    processColorArray(blueArray, blueArrayOutput, FilterParam(QSize(pW, pH), d, ld, sigma));
 #endif
 
     QImage* tmpImage = new QImage(size, QImage::Format_RGB32);
@@ -225,6 +237,42 @@ QImage* nlm_filter(QImage* image, QSize size, int d, int ld) {
     delete imageFiltered;
 
     return tmpImage;
+}
+
+double** make_kernel(int f) {
+    int size = 2*f+1;
+    double** kernel = new double*[size];
+    for (int i = 0; i < size; i++) {
+        kernel[i] = new double[size];
+        for (int j = 0; j < size; j++) {
+            kernel[i][j] = 0;
+        }
+    }
+
+    for (int dd = 1; dd <= f; dd++) {
+        double value = 1. / (double)((2*dd+1) * (2*dd+1));
+        for (int i = -dd; i <= dd; i++) {
+            for (int j = -dd; j <= dd; j++) {
+                int ii = f-i;
+                int jj = f-j;
+                kernel[ii][jj] += value;
+            }
+        }
+    }
+    double sumKernel = 0;
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            kernel[i][j] /= f;
+            sumKernel += kernel[i][j];
+        }
+    }
+
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            kernel[i][j] /= sumKernel;
+        }
+    }
+    return kernel;
 }
 
 void nlm_increse_image(QImage* image, QImage* imageFiltered, QSize size, int d) {

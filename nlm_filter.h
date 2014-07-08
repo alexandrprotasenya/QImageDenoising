@@ -4,6 +4,6 @@
 #include <QImage>
 #include <QSize>
 
-QImage* nlm_filter(QImage*, QSize, int, int);
+QImage* nlm_filter(QImage*, QSize, int, int, double);
 
 #endif // NLM_FILTER_H
