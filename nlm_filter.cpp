@@ -77,10 +77,6 @@ inline void createImageFromColors(double** red, double** green, double** blue, Q
     }
 }
 
-int comp1 (const double *i, const double *j) {
-    return *i - *j;
-}
-
 void processColorArray(double** colorInput, double** colorOutput, FilterParam filterParam) {
     int w = filterParam.getImageSize().width();
     int h = filterParam.getImageSize().height();
@@ -168,6 +164,7 @@ void processColorArray(double** colorInput, double** colorOutput, FilterParam fi
     for (int i = 0; i < patchSizeQ; i++) {
         delete W1[i];
         delete W2[i];
+        delete kernel[i];
     }
     delete kernel;
     delete W1;
