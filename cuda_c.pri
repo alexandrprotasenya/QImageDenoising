@@ -1,60 +1,3 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2014-06-28T19:16:51
-#
-#-------------------------------------------------
-
-QT       += core
-
-QT       += gui
-
-TARGET = QImageDenoising
-CONFIG   += console
-CONFIG   -= app_bundle
-
-TEMPLATE = app
-
-#QMAKE_LIBS+=-static -fopenmp
-#QMAKE_CXXFLAGS+= -std=c++11
-QMAKE_CXXFLAGS += /openmp
-
-SOURCES += main.cpp \
-    awgn.cpp \
-    noise.cpp \
-    median_filter.cpp \
-    nlm_filter.cpp \
-    parrot_test.cpp \
-    utils.cpp \
-    nlm_filter_gray.cpp \
-    nlm_filter_gray2.cpp \
-    nlm_filter_gray3.cpp \
-#    nlmdenoise.cpp \
-    china_denoise.cpp \
-    test_nlm.cpp \
-    diffimages.cpp \
-    nlm_filter_cuda.cpp
-
-HEADERS += \
-    awgn.h \
-    noise.h \
-    median_filter.h \
-    nlm_filter.h \
-    parrot_test.h \
-    utils.h \
-    nlm_filter_gray.h \
-    nlm_filter_gray2.h \
-    nlm_filter_gray3.h \
- #   nlmdenoise.h \
-    china_denoise.h \
-    diffimages.h \
-    nlm_filter_cuda.h
-
-IMAGE_FILES += \
-    Lenna.png \
-    Parrot_ideal.png \
-    Parrot_ideal1.png \
-    Parrot_WGN_stdev_25.png
-
 ## SYSTEM_TYPE - compiling for 32 or 64 bit architecture
 SYSTEM_TYPE = 64
 
@@ -151,18 +94,3 @@ else {
         cuda.dependency_type = TYPE_C
         QMAKE_EXTRA_COMPILERS += cuda
 }
-
-win32 {
-    DESTDIR_WIN = $${DESTDIR}
-    DESTDIR_WIN ~= s,/,\\,g
-    PWD_WIN = $${PWD}
-    PWD_WIN ~= s,/,\\,g
-    for(FILE, IMAGE_FILES){
-        QMAKE_POST_LINK += $$quote(cmd /c copy /y $${PWD_WIN}\\$${FILE} $${DESTDIR_WIN}$$escape_expand(\\n\\t))
-    }
-}
-#unix {
-#    for(FILE, IMAGE_FILES){
-#        QMAKE_POST_LINK += $$quote(cp $${PWD}/$${FILE} $${DESTDIR}$$escape_expand(\\n\\t))
-#    }
-#

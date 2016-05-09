@@ -6,9 +6,7 @@ int comp (const int *i, const int *j) {
     return *i - *j;
 }
 
-QImage* median_filter(QImage* image, QSize size) {
-    QImage* imageFiltered = new QImage(size, QImage::Format_RGB32);
-
+void median_filter(QImage* image, QImage* imageFiltered, QSize size) {
     for (int i = 0; i < size.width(); i++) {
         for (int j = 0; j < size.height(); j++) {
             imageFiltered->setPixel(i, j, image->pixel(i, j));
@@ -52,5 +50,4 @@ QImage* median_filter(QImage* image, QSize size) {
             delete tmpImage;
         }
     }
-    return imageFiltered;
 }

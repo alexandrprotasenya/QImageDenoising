@@ -4,6 +4,6 @@
 #include <QImage>
 #include <QSize>
 
-QImage* median_filter(QImage*, QSize);
+void median_filter(QImage* image, QImage* imageFiltered, QSize size);
 
 #endif // MEDIAN_FILTER_H

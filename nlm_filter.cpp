@@ -10,10 +10,11 @@
 #include <iostream>
 #include <algorithm>
 
-#define MTHREADING
+#include <QDebug>
 
-void nlm_increse_image(QImage*, QImage*, QSize, int);
-double** make_kernel(int);
+#include "utils.h"
+
+//#define MTHREADING
 
 class FilterParam {
 private:
@@ -21,6 +22,7 @@ private:
     int m_windowSize;
     int m_patchSize;
     double m_sigma;
+    double m_param;
 public:
     FilterParam(QSize size, int windowSize, int patchSize, double sigma) {
         m_imageSize = size;
@@ -78,35 +80,40 @@ inline void createImageFromColors(double** red, double** green, double** blue, Q
 }
 
 void processColorArray(double** colorInput, double** colorOutput, FilterParam filterParam) {
-    int w = filterParam.getImageSize().width();
-    int h = filterParam.getImageSize().height();
-    int patchSize = filterParam.getWindowSize();
-    int patchSizeQ = filterParam.getPatchSize();
+    int imageWidth = filterParam.getImageSize().width();
+    int imageHeight = filterParam.getImageSize().height();
+    int windowSize = filterParam.getWindowSize();
+    int patchSize = filterParam.getPatchSize();
 
-    double H2 = filterParam.getSigma() * filterParam.getSigma();
+    double filterP = 0.4f;
+    double fSigma2 = filterParam.getSigma() * filterParam.getSigma();
+    double fH2 = filterP*filterP;
 
-    int t = patchSize/2;
-    int f = patchSizeQ/2;
+    int halfWindowSize = windowSize/2;
+    int halfPatchSize = patchSize/2;
 
-    int m = w - patchSize;
-    int n = h - patchSize;
+    int m = imageWidth - windowSize;
+    int n = imageHeight - windowSize;
 
-    double** kernel = make_kernel(f);
-
-    double** W1 = new double*[patchSizeQ];
-    double** W2 = new double*[patchSizeQ];
-    for (int i = 0; i < patchSizeQ; i++) {
-        W1[i] = new double[patchSizeQ];
-        W2[i] = new double[patchSizeQ];
+    double** kernel = new double*[patchSize];
+    double** Patch1 = new double*[patchSize];
+    double** Patch2 = new double*[patchSize];
+    for (int i = 0; i < patchSize; i++) {
+        Patch1[i] = new double[patchSize];
+        Patch2[i] = new double[patchSize];
+        kernel[i] = new double[patchSize];
     }
+    make_kernel(kernel,patchSize,filterParam.getSigma());
 
-    for (int i = 0; i < w-t; i++) {
-        for (int j = 0; j < h-t; j++) {
-            int i1 = i + f;
-            int j1 = j + f;
-            for (int a = 0; a < patchSizeQ; a++) {
-                for (int b = 0; b < patchSizeQ; b++) {
-                    W1[a][b] = colorInput[i1-f+a][j1-f+a];
+    std::cout << imageWidth << " " << imageHeight << std::endl;
+    for (int i = 0; i < imageWidth; i++) {
+        for (int j = 0; j < imageHeight; j++) {
+//            std::cout << i << " " << j << std::endl;
+            int i1 = i + halfPatchSize;
+            int j1 = j + halfPatchSize;
+            for (int a = 0; a < patchSize; a++) {
+                for (int b = 0; b < patchSize; b++) {
+                    Patch1[a][b] = colorInput[i1-halfPatchSize+a][j1-halfPatchSize+a];
                 }
             }
 
@@ -114,10 +121,10 @@ void processColorArray(double** colorInput, double** colorOutput, FilterParam fi
             double average = 0;
             double sweight = 0;
 
-            int rmin = std::max(i1-t,f+1) - 1;
-            int rmax = std::min(i1+t,m+f);
-            int smin = std::max(j1-t,f+1) - 1;
-            int smax = std::min(j1+t,n+f);
+            int rmin = std::max(i1-halfWindowSize,halfPatchSize+1) - 1;
+            int rmax = std::min(i1+halfWindowSize,m+halfPatchSize);
+            int smin = std::max(j1-halfWindowSize,halfPatchSize+1) - 1;
+            int smax = std::min(j1+halfWindowSize,n+halfPatchSize);
 
             for (int r = rmin; r < rmax; r++) {
                 for (int s = smin; s < smax; s++) {
@@ -125,28 +132,29 @@ void processColorArray(double** colorInput, double** colorOutput, FilterParam fi
                         continue;
                     }
 
-                    for (int a = 0; a < patchSizeQ; a++) {
-                        for (int b = 0; b < patchSizeQ; b++) {
-                            W2[a][b] = colorInput[r-f+a][s-f+a];
+                    for (int a = 0; a < patchSize; a++) {
+                        for (int b = 0; b < patchSize; b++) {
+                            Patch2[a][b] = colorInput[r-halfPatchSize+a][s-halfPatchSize+a];
                         }
                     }
 
                     double N = 0;
-                    for (int a = 0; a < patchSizeQ; a++) {
-                        for (int b = 0; b < patchSizeQ; b++) {
-                            N += kernel[a][b] * ((W1[a][b] - W2[a][b]) *
-                                                 (W1[a][b] - W2[a][b]));
+                    for (int a = 0; a < patchSize; a++) {
+                        for (int b = 0; b < patchSize; b++) {
+                            N += kernel[a][b] * ((Patch1[a][b] - Patch2[a][b]) *
+                                                 (Patch1[a][b] - Patch2[a][b]));
                         }
                     }
 
-                    double Z = exp(-N/H2);
+//                                        double W = exp(-N/fSigma2);
+                    double W = exp(-N/((patchSize+1)*(patchSize+1)*fH2 * fSigma2));
 
-                    if (Z > wmax) {
-                        wmax = Z;
+                    if (W > wmax) {
+                        wmax = W;
                     }
 
-                    sweight += Z;
-                    average += Z * colorInput[r][s];
+                    sweight += W;
+                    average += W * colorInput[r][s];
                 }
             }
 
@@ -154,26 +162,26 @@ void processColorArray(double** colorInput, double** colorOutput, FilterParam fi
             sweight += wmax;
 
             if (sweight > 0) {
-                colorOutput[i1][j1] = average / sweight;
+                colorOutput[i][j] = average / sweight;
             } else {
-                colorOutput[i1][j1] = colorInput[i1][j1];
+                colorOutput[i][j] = colorInput[i1][j1];
             }
         }
     }
 
-    for (int i = 0; i < patchSizeQ; i++) {
-        delete W1[i];
-        delete W2[i];
+    for (int i = 0; i < patchSize; i++) {
+        delete Patch1[i];
+        delete Patch2[i];
         delete kernel[i];
     }
     delete kernel;
-    delete W1;
-    delete W2;
+    delete Patch1;
+    delete Patch2;
 }
 
 QImage* nlm_filter(QImage* image, QSize size, int d, int ld, double sigma) {
-    int pW = size.width()+d-1;
-    int pH = size.height()+d-1;
+    int pW = size.width()+d-(d%2!=0?1:0);
+    int pH = size.height()+d-(d%2!=0?1:0);
 
     QImage* imageFiltered = new QImage(pW, pH, QImage::Format_RGB32);
     QImage* tmpImage1 = new QImage(pW, pH, QImage::Format_RGB32);
@@ -234,101 +242,4 @@ QImage* nlm_filter(QImage* image, QSize size, int d, int ld, double sigma) {
     delete imageFiltered;
 
     return tmpImage;
-}
-
-double** make_kernel(int f) {
-    int size = 2*f+1;
-    double** kernel = new double*[size];
-    for (int i = 0; i < size; i++) {
-        kernel[i] = new double[size];
-        for (int j = 0; j < size; j++) {
-            kernel[i][j] = 0;
-        }
-    }
-
-    for (int dd = 1; dd <= f; dd++) {
-        double value = 1. / (double)((2*dd+1) * (2*dd+1));
-        for (int i = -dd; i <= dd; i++) {
-            for (int j = -dd; j <= dd; j++) {
-                int ii = f-i;
-                int jj = f-j;
-                kernel[ii][jj] += value;
-            }
-        }
-    }
-    double sumKernel = 0;
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
-            kernel[i][j] /= f;
-            sumKernel += kernel[i][j];
-        }
-    }
-
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
-            kernel[i][j] /= sumKernel;
-        }
-    }
-    return kernel;
-}
-
-void nlm_increse_image(QImage* image, QImage* imageFiltered, QSize size, int d) {
-    d = d-1;
-    int dh = d/2;
-    // copy image
-    for (int i = dh; i < size.width()+dh; i++) {
-        for (int j = dh; j < size.height()+dh; j++) {
-            imageFiltered->setPixel(i, j, image->pixel(i-dh, j-dh));
-        }
-    }
-
-    // copy borders
-    for (int i = dh; i < size.width()+dh; i++) {
-        for (int j = 0; j < dh; j++) {
-            imageFiltered->setPixel(i, j, image->pixel(i-dh, 0));
-        }
-    }
-
-    for (int i = dh; i < size.width()+dh; i++) {
-        for (int j = size.height()+dh; j < size.height()+d; j++) {
-            imageFiltered->setPixel(i, j, image->pixel(i-dh, size.height()-1));
-        }
-    }
-
-    for (int i = 0; i < dh; i++) {
-        for (int j = dh; j < size.height()+dh; j++) {
-            imageFiltered->setPixel(i, j, image->pixel(0, j-dh));
-        }
-    }
-
-    for (int i = size.width()+dh; i < size.width()+d; i++) {
-        for (int j = dh; j < size.height()+dh; j++) {
-            imageFiltered->setPixel(i, j, image->pixel(size.width()-1, j-dh));
-        }
-    }
-
-    // copy corners
-    for (int i = 0; i < dh; i++) {
-        for (int j = 0; j < dh; j++) {
-            imageFiltered->setPixel(i, j, image->pixel(0, 0));
-        }
-    }
-
-    for (int i = 0; i < dh; i++) {
-        for (int j = size.height()+dh; j < size.height()+d; j++) {
-            imageFiltered->setPixel(i, j, image->pixel(0, size.height()-1));
-        }
-    }
-
-    for (int i = size.width()+dh; i < size.width()+d; i++) {
-        for (int j = 0; j < dh; j++) {
-            imageFiltered->setPixel(i, j, image->pixel(size.width()-1, 0));
-        }
-    }
-
-    for (int i = size.width()+dh; i < size.width()+d; i++) {
-        for (int j = size.height()+dh; j < size.height()+d; j++) {
-            imageFiltered->setPixel(i, j, image->pixel(size.width()-1, size.height()-1));
-        }
-    }
 }
