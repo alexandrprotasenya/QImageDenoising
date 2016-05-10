@@ -29,30 +29,13 @@ int iDivUp(int a, int b)
     return ((a % b) != 0) ? (a / b + 1) : (a / b);
 }
 
-//__global__ void nlm_classic_device2(const float* d_src, float* d_dst, float fSigma, float fParam, int patch, int window, int w, int h) {
-
-//    const int ix = blockDim.x * blockIdx.x + threadIdx.x;
-//    const int iy = blockDim.y * blockIdx.y + threadIdx.y;
-//    if (ix < w && iy < h)
-//    {
-//        d_dst[w*iy+ix] = d_src[w*iy+ix];
-//    }
-//}
-
 __global__ void nlm_classic_global(const float* d_src,
                                    float* d_dst,
-                                   float fSigma,
-                                   float fParam,
                                    int patch, int window,
-                                   int w, int h,
-                                   int patchSize, float fSigma2, float fH2, float icwl) {
+                                   int w, int h, float fSigma2, float fH2, float icwl) {
 
     const int ix = blockDim.x * blockIdx.x + threadIdx.x;
     const int iy = blockDim.y * blockIdx.y + threadIdx.y;
-    //Add half of a texel to always address exact texel centers
-    //    const float x = (float)ix + 0.5f;
-    //    const float y = (float)iy + 0.5f;
-
     if (ix < w && iy < h)
     {
         int i1 = ix+patch;
@@ -102,7 +85,6 @@ __global__ void nlm_classic_global(const float* d_src,
             d_dst[w*iy+ix] = d_src[w*iy+ix];
         }
     }
-
 }
 
 void nlm_filter_classic_CUDA(const float* h_src, float* h_dst, int w, int h, float fSigma, float fParam, int patch, int window) {
@@ -149,7 +131,7 @@ void nlm_filter_classic_CUDA(const float* h_src, float* h_dst, int w, int h, flo
     float icwl = patchSize * patchSize;
     fH2 *= icwl;
 
-    nlm_classic_global<<<grid, threads>>>(d_src, d_dst, fSigma, fParam, patch, window, w, h, patchSize, fSigma2, fH2, icwl);
+    nlm_classic_global<<<grid, threads>>>(d_src, d_dst, patch, window, w, h, fSigma2, fH2, icwl);
 
     err = cudaGetLastError();
     if (err != cudaSuccess)

@@ -28,6 +28,8 @@ int main(int argc, char *argv[])
     parrot_test();
 //    test_nlm();
 
+//    system("pause");
+
     a.exit(0);
     return 0;
 }

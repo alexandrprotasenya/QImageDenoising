@@ -32,7 +32,8 @@ SOURCES += main.cpp \
     china_denoise.cpp \
     test_nlm.cpp \
     diffimages.cpp \
-    nlm_filter_cuda.cpp
+    nlm_filter_cuda.cpp \
+    nlm_random_cuda.cpp
 
 HEADERS += \
     awgn.h \
@@ -47,7 +48,8 @@ HEADERS += \
  #   nlmdenoise.h \
     china_denoise.h \
     diffimages.h \
-    nlm_filter_cuda.h
+    nlm_filter_cuda.h \
+    nlm_random_cuda.h
 
 IMAGE_FILES += \
     Lenna.png \
@@ -56,7 +58,7 @@ IMAGE_FILES += \
     Parrot_WGN_stdev_25.png
 
 ## SYSTEM_TYPE - compiling for 32 or 64 bit architecture
-SYSTEM_TYPE = 64
+SYSTEM_TYPE = 32
 
 ## CUDA_COMPUTE_ARCH - This will enable nvcc to compiler appropriate architecture specific code for different compute versions.
 ## Multiple architectures can be requested by using a space to seperate. example:
@@ -67,10 +69,11 @@ CUDA_COMPUTE_ARCH = 30
 CUDA_DEFINES +=
 
 ## CUDA_DIR - the directory of cuda such that CUDA\<version-number\ contains the bin, lib, src and include folders
-CUDA_DIR= "c:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v6.5"
+CUDA_DIR= "c:/CUDA/SDK_7.5"
 
 ## CUDA_SOURCES - the source (generally .cu) files for nvcc. No spaces in path names
-CUDA_SOURCES+=nlm_classic.cu
+CUDA_SOURCES += nlm_classic.cu \
+                nlm_random.cu
 
 OTHER_FILES += nlm_classic.cu
 
@@ -96,8 +99,8 @@ win32:{
   QMAKE_LFLAGS_DEBUG += /NODEFAULTLIB:msvcrtd.lib
 
 
-  CUDA_LIBS_DIR = "$$CUDA_DIR/lib/x64"
-  QMAKE_LFLAGS += /LIBPATH:\"$$CUDA_DIR/lib/x64\"
+  CUDA_LIBS_DIR = "$$CUDA_DIR/lib/Win32"
+  QMAKE_LFLAGS += /LIBPATH:\"$$CUDA_DIR/lib/Win32\"
   LIBS += -lcuda -lcudart
 
   win32-msvc2012:contains(QMAKE_TARGET.arch, x86_64):{
@@ -166,3 +169,6 @@ win32 {
 #        QMAKE_POST_LINK += $$quote(cp $${PWD}/$${FILE} $${DESTDIR}$$escape_expand(\\n\\t))
 #    }
 #
+
+DISTFILES += \
+    nlm_random.cu
