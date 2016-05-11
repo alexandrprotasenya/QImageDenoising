@@ -32,22 +32,23 @@ int iDivUp(int a, int b)
 __global__ void nlm_classic_global(const float* d_src,
                                    float* d_dst,
                                    int patch, int window,
-                                   int w, int h, float fSigma2, float fH2, float icwl) {
+                                   int width, int height, float fSigma2, float fH2, float icwl) {
 
     const int ix = blockDim.x * blockIdx.x + threadIdx.x;
     const int iy = blockDim.y * blockIdx.y + threadIdx.y;
-    if (ix < w && iy < h)
+    if (ix < width && iy < height)
     {
         int i1 = ix+patch;
         int j1 = iy+patch;
+
         float wmax = 0;
         float average = 0;
         float sweight = 0;
 
-        int rmin = Max(i1-window,patch);
-        int rmax = Min(i1+window,w+patch);
-        int smin = Max(j1-window,patch);
-        int smax = Min(j1+window,h+patch);
+        int rmin = Max(i1-window,patch+1);
+        int rmax = Min(i1+window,width+patch);
+        int smin = Max(j1-window,patch+1);
+        int smax = Min(j1+window,height+patch);
 
         for (int r = rmin; r < rmax; r++) {
             for (int s = smin; s < smax; s++) {
@@ -57,8 +58,8 @@ __global__ void nlm_classic_global(const float* d_src,
                 float diff = 0;
                 for (int ii = -patch; ii <= patch; ii++) {
                     for (int jj = -patch; jj <= patch; jj++) {
-                        float a = d_src[w*(j1+jj)+(i1+ii)];
-                        float b = d_src[w*(s+jj)+(r+ii)];
+                        float a = d_src[width*(j1+jj)+(i1+ii)];
+                        float b = d_src[width*(s+jj)+(r+ii)];
                         float c = a-b;
                         diff += c*c;
                     }
@@ -72,26 +73,26 @@ __global__ void nlm_classic_global(const float* d_src,
                 }
 
                 sweight += W;
-                average += W * d_src[w*s + r];
+                average += W * d_src[width*s + r];
             }
         }
-        average += wmax * d_src[w*j1+i1];
+        average += wmax * d_src[width*j1+i1];
         sweight += wmax;
 
         if (sweight > 0) {
-            d_dst[w*iy+ix] = average / sweight;
+            d_dst[width*j1+i1] = average / sweight;
         }
         else {
-            d_dst[w*iy+ix] = d_src[w*iy+ix];
+            d_dst[width*j1+i1] = d_src[width*j1+i1];
         }
     }
 }
 
-void nlm_filter_classic_CUDA(const float* h_src, float* h_dst, int w, int h, float fSigma, float fParam, int patch, int window) {
+void nlm_filter_classic_CUDA(const float* h_src, float* h_dst, int width, int height, float fSigma, float fParam, int patch, int window) {
     cudaError_t err = cudaSuccess;
 
     float* d_src = NULL, *d_dst = NULL;
-    unsigned int nBytes = sizeof(float) * (w*h);
+    unsigned int nBytes = sizeof(float) * (width*height);
 
     err = cudaMalloc((void **)& d_src, nBytes);
     if (err != cudaSuccess)
@@ -122,7 +123,7 @@ void nlm_filter_classic_CUDA(const float* h_src, float* h_dst, int w, int h, flo
     }
 
     dim3 threads(BLOCKDIM_X, BLOCKDIM_Y);
-    dim3 grid(iDivUp(w, BLOCKDIM_X), iDivUp(h, BLOCKDIM_Y));
+    dim3 grid(iDivUp(width, BLOCKDIM_X), iDivUp(height, BLOCKDIM_Y));
 
     int patchSize = patch*2+1;
     float fSigma2 = fSigma * fSigma;
@@ -131,7 +132,7 @@ void nlm_filter_classic_CUDA(const float* h_src, float* h_dst, int w, int h, flo
     float icwl = patchSize * patchSize;
     fH2 *= icwl;
 
-    nlm_classic_global<<<grid, threads>>>(d_src, d_dst, patch, window, w, h, fSigma2, fH2, icwl);
+    nlm_classic_global<<<grid, threads>>>(d_src, d_dst, patch, window, width, height, fSigma2, fH2, icwl);
 
     err = cudaGetLastError();
     if (err != cudaSuccess)

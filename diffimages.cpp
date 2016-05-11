@@ -24,4 +24,7 @@ void diff_images(QImage *image1, QImage *image2, QString fileName)
     QImageWriter* imageDiff = new QImageWriter();
     imageDiff->setFileName(fileName);
     imageDiff->write(*image3);
+
+    delete image3;
+    delete imageDiff;
 }

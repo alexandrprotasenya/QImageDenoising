@@ -8,10 +8,12 @@
 #include <QDebug>
 #include <QDateTime>
 
+#include "median_filter.h"
 #include "nlm_filter_gray.h"
 #include "nlm_filter_gray2.h"
 #include "nlm_filter_gray3.h"
 #include "nlm_filter_cuda.h"
+#include "nlm_random_cuda.h"
 #include "china_denoise.h"
 #include "utils.h"
 #include "diffimages.h"

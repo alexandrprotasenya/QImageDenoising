@@ -144,6 +144,10 @@ void nlm_filter_gray(QImage* imageNoise,
         delete []colorInput[i];
         delete []colorOutput[i];
     }
+    for (int i = 0; i < incWidth; ++i) {
+        delete []increasedImage[i];
+    }
     delete []colorOutput;
     delete []colorInput;
+    delete []increasedImage;
 }

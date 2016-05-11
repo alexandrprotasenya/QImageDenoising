@@ -10,7 +10,7 @@ using namespace std;
 
 void test_nlm() {
     srand(time(0));
-    QString sourceName = "Lenna";
+    QString sourceName = "Parrot";
     QString ext = ".png";
 
     double mse_filtered;
@@ -22,7 +22,7 @@ void test_nlm() {
     QImage* imageIdeal = new QImage();
     imageIdealReader->read(imageIdeal);
 
-    QImage* imageFiltered1 = new QImage(imageIdeal->size(), QImage::Format_RGB32);
+/*    QImage* imageFiltered1 = new QImage(imageIdeal->size(), QImage::Format_RGB32);
     QImage* imageNoise1 = addAWGN_GRAY(imageIdeal, imageIdeal->size(),(double)NOISE);
 
     QDateTime mStartTime = QDateTime::currentDateTime();
@@ -52,9 +52,9 @@ void test_nlm() {
 
     QImageWriter* imageWriterFiltered = new QImageWriter();
     imageWriterFiltered->setFileName(sourceName+"_filtered"+ext);
-    imageWriterFiltered->write(*imageFiltered1);
+    imageWriterFiltered->write(*imageFiltered1);*/
 
-/*    cout << "SIGMA\tMSE*\tPSNR*\tMSE\tPSNR" << endl;
+    cout << "SIGMA\tMSE*\tPSNR*\tMSE\tPSNR" << endl;
     for (int i = 5; i <= 50; i+=3) {
         double avg_mse = 0;
         double avg_psnr = 0;
@@ -64,9 +64,19 @@ void test_nlm() {
         for (int j = 0; j < N; j++) {
             QImage* imageNoise = addAWGN_GRAY(imageIdeal, imageIdeal->size(),(double)i);
             QImage* imageFiltered = new QImage(imageNoise->size(), QImage::Format_RGB32);
+            QImage* imageFiltered2 = new QImage(imageNoise->size(), QImage::Format_RGB32);
 
-//            nlm_filter_gray(imageNoise,imageFiltered,imageNoise->size(),2,10,i,0.4);
-            china_denoise(imageNoise, imageFiltered, (double)i, 11);
+            nlm_filter_gray(imageNoise,imageFiltered,imageNoise->size(),2,10,i,0.4f);
+            nlm_filter_cuda(imageNoise, imageFiltered2, imageNoise->size(), 2, 10, i, 0.4f);
+//            china_denoise(imageNoise, imageFiltered, (double)i, 11);
+            double mse0, mse1, psnr0, psnr1;
+            calcMsePsnr(&mse0, &psnr0, imageIdeal, imageFiltered, imageIdeal->size());
+            calcMsePsnr(&mse1, &psnr1, imageIdeal, imageFiltered2, imageIdeal->size());
+            printf("\t\tCPU: \t%f \t%f\n\t\tGPU \t%f \t%f\n", mse0, psnr0, mse1, psnr1);calcMsePsnr(&mse0, &psnr0, imageIdeal, imageFiltered, imageIdeal->size());
+
+            QImageWriter* imageWriterFiltered = new QImageWriter();
+            imageWriterFiltered->setFileName("filtered/filtered_" + sourceName+"_filtered_" + QString::number(i) +ext);
+            imageWriterFiltered->write(*imageFiltered);
 
             diff_images(imageNoise,imageFiltered, QString("diff/diff_") + QString::number(i) + QString(".png"));
 
@@ -81,10 +91,11 @@ void test_nlm() {
 
             delete imageNoise;
             delete imageFiltered;
+            delete imageFiltered2;
         }
         //cout << i << "\t" << avg_mse/N << "\t" << avg_psnr/N << endl;
         cout << i << "\t";
         cout << avgmn/N << "\t" << avgpn/N << "\t";
         cout << avg_mse/N<< "\t" << avg_psnr/N << endl;
-    }*/
+    }
 }

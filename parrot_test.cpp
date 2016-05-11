@@ -27,8 +27,10 @@ void parrot_test() {
     // 5 3 46
     QDateTime mStartTime = QDateTime::currentDateTime();
 //    nlm_filter_gray(imageNoise, imageFiltered, imageNoise->size(), 8, 1, 25, 0.9f);
-    nlm_filter_cuda(imageNoise, imageFiltered, imageNoise->size(), 8, 1, 25, 0.9f);
+//    nlm_filter_cuda(imageNoise, imageFiltered, imageNoise->size(), 8, 1, 25, 0.9f);
 //    china_denoise(imageNoise, imageFiltered, 25, 11);
+    nlm_random_cuda(imageNoise, imageFiltered, 25, 0.4, 3, 3, 128, 4);
+//    median_filter(imageNoise, imageFiltered, imageNoise->size());
     QDateTime mFinishTime = QDateTime::currentDateTime();
     qDebug() << QDateTime::fromMSecsSinceEpoch(mFinishTime.toMSecsSinceEpoch() - mStartTime.toMSecsSinceEpoch()).time();
     diff_images(imageNoise,imageFiltered);

@@ -78,7 +78,7 @@ CUDA_SOURCES += nlm_classic.cu \
 OTHER_FILES += nlm_classic.cu
 
 ## CUDA_LIBS - the libraries to link
-CUDA_LIBS= -lcuda -lcudart
+CUDA_LIBS= -lcuda -lcudart -lcurand
 
 ## CUDA_INC - all incldues needed by the cuda files (such as CUDA\<version-number\include)
 CUDA_INC+= $$CUDA_DIR/include

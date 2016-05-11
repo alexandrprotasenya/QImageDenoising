@@ -4,7 +4,7 @@
 
 
 // Forward declare the function in the .cu file
-void nlm_filter_classic_CUDA(const float* h_src, float* h_dst, int w, int h, float fSigma, float fParam, int patch, int window);
+void nlm_filter_classic_CUDA(const float* h_src, float* h_dst, int width, int height, float fSigma, float fParam, int patch, int window);
 
 void nlm_filter_cuda(QImage *imageNoise, QImage *imageFiltered, QSize imageSize, int halfWindowSize, int halfPatchSize, float fSigma, float fParam)
 {
@@ -33,20 +33,20 @@ void nlm_filter_cuda(QImage *imageNoise, QImage *imageFiltered, QSize imageSize,
 
     /* SIZES */
     int patchSize = halfPatchSize * 2 + 1;
-    int w = imageSize.width();
-    int h = imageSize.height();
-    int incWidth = patchSize - 1 + w;
-    int incHeight = patchSize - 1 + h;
+    int width = imageSize.width();
+    int height = imageSize.height();
+    int incWidth = patchSize - 1 + width;
+    int incHeight = patchSize - 1 + height;
 
     /* CREATE ARRAYS */
-    float** colorInput = new float*[w];
-    float** colorOutput = new float*[w];
-    for (int i = 0; i < w; i++) {
-        colorInput[i] = new float[h];
-        colorOutput[i] = new float[h];
+    float** colorInput = new float*[width];
+    float** colorOutput = new float*[width];
+    for (int i = 0; i < width; i++) {
+        colorInput[i] = new float[height];
+        colorOutput[i] = new float[height];
     }
-    for (int i = 0; i < w; i++) {
-        for (int j = 0; j < h; j++) {
+    for (int i = 0; i < width; i++) {
+        for (int j = 0; j < height; j++) {
             colorInput[i][j] = qGray(imageNoise->pixel(i,j));
         }
     }
@@ -80,18 +80,24 @@ void nlm_filter_cuda(QImage *imageNoise, QImage *imageFiltered, QSize imageSize,
             increasedImage[i][j] = h_output[incWidth*j+i];
         }
     }
-    for (int i = 0; i < w; i++) {
-        for (int j = 0; j < h; j++) {
-            int gray = increasedImage[i][j];
+    for (int i = 0; i < width; i++) {
+        for (int j = 0; j < height; j++) {
+            int gray = increasedImage[i+halfPatchSize][j+halfPatchSize];
             imageFiltered->setPixel(i, j, qRgb(gray, gray, gray));
         }
     }
 
     /* CLEAR MEMORY */
-    for (int i = 0; i < w; i++) {
+    for (int i = 0; i < width; i++) {
         delete []colorInput[i];
         delete []colorOutput[i];
     }
+    for (int i = 0; i < incWidth; ++i) {
+        delete []increasedImage[i];
+    }
     delete []colorOutput;
     delete []colorInput;
+    delete []increasedImage;
+    delete []h_input;
+    delete []h_output;
 }

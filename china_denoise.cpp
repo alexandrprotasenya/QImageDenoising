@@ -18,10 +18,10 @@
 #define GENERATOR std::default_random_engine
 #define DISTRIB std::normal_distribution<double>
 
-#define IK 138
-#define RADIUS 3
+#define QUEUE_SIZE 138
+#define PATCH_RADIUS 3
 #define STEPS 4
-#define RAND_SEARCH 25 //25
+#define RAND_SEARCH_STEPS 25 //25
 #define SEARCH_RADIUS 15 //10
 #define FPARAM 0.4
 
@@ -75,7 +75,7 @@ public:
     }
 
 private:
-    int ss = IK;
+    int ss = QUEUE_SIZE;
     std::vector<PatchDist> pqDist;
 };
 
@@ -174,7 +174,7 @@ void step_Initialization_Array(PriorityQueue** pq, int x, int y, double** fImI, 
 
 void china_denoise(QImage *input, QImage *output, double dSigma, int iK) {
 
-    int inc = RADIUS;
+    int inc = PATCH_RADIUS;
 
     int iWidth = input->width();
     int iHeight = input->height();
@@ -208,13 +208,24 @@ void china_denoise(QImage *input, QImage *output, double dSigma, int iK) {
     private_china_denoise(increasedImage, output_array, iWidth, iHeight, dSigma, iK);
 
     array2image(output_array, output, iWidth, iHeight);
+
+    for (int i = 0; i < iWidth; i++) {
+        delete []input_array[i];
+        delete []output_array[i];
+    }
+    for (int i = 0; i < incWidth; ++i) {
+        delete []increasedImage[i];
+    }
+    delete []input_array;
+    delete []output_array;
+    delete []increasedImage;
 }
 
 void private_china_denoise(double** fImI, double** fImO, int iWidth, int iHeight, double fSigma, int iK) {
 
     int iSigmaS = iWidth / SEARCH_RADIUS;
-    iK = IK;
-    int iPatch = RADIUS;
+    iK = QUEUE_SIZE;
+    int iPatch = PATCH_RADIUS;
 
     int steps = STEPS;
 
@@ -313,7 +324,7 @@ void private_china_denoise(double** fImI, double** fImO, int iWidth, int iHeight
 
             int maxJ = std::min(iK, static_cast<int>(log2(fSigma)));
 
-            for (int N = 0; N < RAND_SEARCH; N++) {
+            for (int N = 0; N < RAND_SEARCH_STEPS; N++) {
                 for (int jj = 0; jj < maxJ; jj++) {
                     int randX;
                     int randY;
@@ -362,6 +373,13 @@ void private_china_denoise(double** fImI, double** fImO, int iWidth, int iHeight
     }
     }
     }
+    for (int i = 0; iWidth; ++i) {
+        for (int j = 0; j < iHeight; ++j) {
+            pqArray[i][j].clear();
+        }
+        delete []pqArray[i];
+    }
+    delete []pqArray;
 }
 
 void image2array(QImage* input, double** output) {
